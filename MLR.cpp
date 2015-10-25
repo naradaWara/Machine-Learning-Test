@@ -71,15 +71,6 @@ public:
 		m_rows = m_cols = 0;
 	}
 	
-	/*
-	void SetName(const char *name) { //strcpy(m_name, name); 
-	}
-	const char* GetName() const { return m_name; }
-	void GetInput()
-	{
-		std::cin >> *this;
-	}
-	*/
 	
 	//--------------------
 	//Overloaded operator
@@ -127,49 +118,6 @@ public:
 		return trans;
 	}
 	
-	//----------------------
-	// Overloaded operator
-	//----------------------
-	CMatrix operator + (const CMatrix &other)
-	{
-		if( this->m_rows != other.m_rows ||
-			this->m_cols != other.m_cols)
-		{
-			std::cout << "Addition could not take place because number of rows and columns are different between the two matrices";
-			return *this;
-		}
-		CMatrix result("", m_rows, m_cols);
-		for(int i = 0; i < m_rows; i++)
-		{
-			for(int j = 0; j < m_cols; j++)
-			{
-				result.m_pData[i][j] = this->m_pData[i][j] + other.m_pData[i][j];
-			}
-		}
-		return result;
-	}
-	
-	//--------------------------------------
-	// Overloaded operator
-	//---------------------------------
-	CMatrix operator - (const CMatrix &other)
-	{
-		if( this->m_rows != other.m_rows ||
-			this->m_cols != other.m_cols)
-		{
-			std::cout << "Subtraction could not take place because number of rows and columns are different between the two matrices";
-			return *this;
-		}
-		CMatrix result("", m_rows, m_cols);
-		for(int i = 0; i < m_rows; i++)
-		{
-			for(int j = 0; j < m_cols; j++)
-			{
-				result.m_pData[i][j] = this->m_pData[i][j] - other.m_pData[i][j];
-			}
-		}
-		return result;
-	}
 	
 	//-------------------------------
 	// Multiplication operator
@@ -197,7 +145,7 @@ public:
 	
 	//------------------------------------
 	// Merges two matrices columnwise
-	// in Matrix will be placed to the tight of this Matrix
+	// 'in' Matrix will be placed to the tight of this Matrix
 	//--------------------------------------
 	CMatrix merge(CMatrix& in){
 		CMatrix ret("MER", m_rows, m_cols+ in.m_cols);
@@ -231,7 +179,7 @@ public:
 					maxRow = k;
 				}
 			}
-			// Swap the row with the maximum value with current row for each column
+			// Swap the row containing the maximum value with the current row 
 			for (int k=i; k<n+1;k++) {
 				double tmp = A[maxRow][k];
 				A[maxRow][k] = A[i][k];
@@ -239,6 +187,10 @@ public:
 			}
 			// Make all rows below this one has zero value in current column
 			for (int k=i+1; k<n; k++) {
+				if (A[i][i] == 0){
+					cout << "This system of equations does not have a unique solution" << endl;
+					exit(0);
+				}
 				double c = -A[k][i]/A[i][i];
 				for (int j=i; j<n+1; j++) {
 					if (i==j) {
@@ -249,8 +201,12 @@ public:
 				}
 			}
 		}
-		// Solve equation Ax=b for an upper triangular matrix A
+		// Solve equation Ax=b for x using back substitution
 		for (int i=n-1; i>=0; i--) {
+			if (A[i][i] == 0){
+					cout << "This system of equations does not have a unique solution" << endl;
+					exit(0);
+			}
 			x.m_pData[i][0] = A[i][n]/A[i][i];
 			for (int k=i-1;k>=0; k--) {
 				A[k][n] -= A[k][i] * x.m_pData[i][0];
@@ -290,35 +246,57 @@ std::ostream& operator << (std::ostream &os,const CMatrix &m)
 
 
 
-//-----------------------------------------------------------
-// This is the class which handles Multiple Linear Regression
+//-----------------------------------------------------------------------
+// This is the class which handles Multiple Linear Regression.
 // It basically reads input data, calculates the regression parameters
-// based on the training data,computes the output values for the test data
+// based on the training data,computes the target values for the test data
 // and finally outputs them.
+//----------------------------------------------------------------------
 class mlr{
 	
-	
-public:
+private:	
+
 	CMatrix *fmat; //feature matrix, training data 
 	CMatrix *tmat; // corresponding output vector for training data  
 	CMatrix *testMat; // feature matrix, test data
+
+public:
 	
+	//We are satisfied with the default constructor, hence no constructor
+	
+	//------------------------------
+	// Destructor
+	//------------------------------
+	~mlr(){
+		delete fmat;
+		delete tmat;
+		delete testMat;
+	}
+	
+	//------------------
 	//Allocate fmat
+	//------------------
 	void create_fmat(const char * name, int r, int c){
 	  fmat = new CMatrix(name,r,c);
 	}
 	
+	//-----------------------
 	//Allocate tmat
+	//-----------------------
 	void create_tmat(const char * name, int r, int c){
 	  tmat = new CMatrix(name,r,c);
 	}
 	
-	//Allocate testMat
+	//------------------------
+	// Allocate testMat
+	//-------------------------
 	void create_testMat(const char *name, int r , int c){
 		testMat = new CMatrix(name, r,c);
 	}
 	
+	//-----------------------------------------------------------------
 	// We do the regression here and compute the output for test data 
+	//----------------------------------------------------------------
 	void fit_data(){
 		CMatrix X_t = (fmat->Transpose()); //X' = transpose of fmat
 		CMatrix X_t_X = X_t*(*fmat);       //X' * X
@@ -332,7 +310,7 @@ public:
 		// regression parameters weights
 		CMatrix weights = merged.gauss();
 		
-		//Finally computes the outputs for the test data, i.e. predicted values
+		//Finally compute the outputs for the test data, i.e. predicted values
 		CMatrix predicted = (*testMat)*weights;
 		
 		//output the predicted values
@@ -381,9 +359,17 @@ public:
 			fmat->m_pData[k][0]=1.0; //first column is 1 corresponding to the bias coefficient
 			for (int l=1;l<=dim_features;l++){
 				is >> value;
+				if ((value <0) || (value > 1.0)){
+					cout << "Feature value = " << value << " not in the allowed range" << endl;
+					exit(0);
+				}
 				fmat->m_pData[k][l] = value;
 			}
 			is >> value; 
+			if ((value <0) || (value > 1.0E6)){
+				cout << "Target value = " << value << " not in the allowed range" << endl;
+				exit(0);
+			}
 			tmat->m_pData[k][0]= value;
 		} 
 		
@@ -404,6 +390,10 @@ public:
 			testMat->m_pData[k][0]=1.0; //first column is 1 corresponding to the bias coefficient
 			for (int l=1;l<=dim_features;l++){
 				is >> value;
+				if ((value <0) || (value > 1.0)){
+					cout << "Feature value = " << value << " not in the allowed range" << endl;
+					exit(0);
+				}
 				testMat->m_pData[k][l] = value;
 			}
 		}
